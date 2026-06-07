@@ -1,6 +1,9 @@
 import os
 import json
 import uuid
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 
 from flask import Flask, render_template, request, jsonify, session
@@ -19,7 +22,12 @@ client = OpenAI(
 
 model = os.getenv("OPENAI_MODEL", "gpt-4o")
 
+EMAIL_REMITENTE = os.getenv("EMAIL_REMITENTE", "botmuni46@gmail.com")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "")
+EMAIL_DESTINO = os.getenv("EMAIL_DESTINO", "")
+
 solicitudes_frecuentes = {"permiso": 0, "multas": 0, "patentes": 0, "servicios": 0}
+suscriptores = []
 
 tools = [
     {
@@ -53,10 +61,56 @@ tools = [
             "description": "Entrega información sobre servicios municipales generales",
             "parameters": {"type": "object", "properties": {}}
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "suscribir_noticias",
+            "description": "Suscribe un correo electrónico para recibir noticias municipales como el horario del camión de la basura. Usa esta herramienta cuando el usuario pida recibir noticias o información del camión de la basura por correo.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "correo": {
+                        "type": "string",
+                        "description": "El correo electrónico del usuario"
+                    }
+                },
+                "required": ["correo"]
+            }
+        }
     }
 ]
 
-def ejecutar_herramienta(name):
+def enviar_correo(destinatario):
+    if not EMAIL_PASSWORD:
+        return "Error: No hay configuración de correo. Revisa las variables EMAIL_REMITENTE y EMAIL_PASSWORD en el archivo .env"
+
+    asunto = "Noticias Municipalidad de Llanquihue"
+    cuerpo = (
+        "Hola vecino/a de Llanquihue.\n\n"
+        "El camión de la basura pasará de lunes a sábado "
+        "desde las 09:00 hasta las 18:00 horas.\n\n"
+        "Municipalidad de Llanquihue."
+    )
+
+    try:
+        mensaje = MIMEMultipart()
+        mensaje["From"] = EMAIL_REMITENTE
+        mensaje["To"] = destinatario
+        mensaje["Subject"] = asunto
+        mensaje.attach(MIMEText(cuerpo, "plain"))
+
+        servidor = smtplib.SMTP("smtp.gmail.com", 587)
+        servidor.starttls()
+        servidor.login(EMAIL_REMITENTE, EMAIL_PASSWORD)
+        servidor.sendmail(EMAIL_REMITENTE, destinatario, mensaje.as_string())
+        servidor.quit()
+
+        return f"Correo enviado exitosamente a {destinatario} con la información del camión de la basura."
+    except Exception as e:
+        return f"Error al enviar correo: {e}"
+
+def ejecutar_herramienta(name, args):
     if name == "consultar_permiso_circulacion":
         solicitudes_frecuentes["permiso"] += 1
         return (
@@ -94,6 +148,14 @@ def ejecutar_herramienta(name):
             "- Atención social\n"
             "- Información comunitaria"
         )
+    elif name == "suscribir_noticias":
+        correo = args.get("correo", "")
+        if not correo:
+            return "Por favor proporciona un correo electrónico válido."
+        if correo not in suscriptores:
+            suscriptores.append(correo)
+        resultado = enviar_correo(correo)
+        return resultado
     return ""
 
 SYSTEM_PROMPT = (
@@ -101,7 +163,11 @@ SYSTEM_PROMPT = (
     "Responde de forma clara, amable y útil para los ciudadanos. "
     "Cuando te pregunten sobre permisos de circulación, multas, patentes comerciales "
     "o servicios municipales, usa la herramienta correspondiente para entregar "
-    "información precisa. Siempre responde en español."
+    "información precisa. "
+    "Si el usuario pide recibir noticias del camión de la basura o información "
+    "municipal por correo, pídele su correo electrónico y luego usa la herramienta "
+    "suscribir_noticias con ese correo para enviarle la información. "
+    "Siempre responde en español."
 )
 
 conversaciones = {}
@@ -149,7 +215,7 @@ def chat():
             for tc in msg.tool_calls:
                 nombre = tc.function.name
                 args = json.loads(tc.function.arguments) if tc.function.arguments else {}
-                resultado = ejecutar_herramienta(nombre)
+                resultado = ejecutar_herramienta(nombre, args)
                 messages.append({
                     "role": "assistant",
                     "content": None,
