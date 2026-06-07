@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asistente Municipal - Llanquihue</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+  body {
+    background: linear-gradient(135deg, #0a1628 0%, #1a2a4a 50%, #0d1f3c 100%);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 900px;
+    height: 90vh;
+    max-height: 750px;
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(20px);
+    border-radius: 24px;
+    border: 1px solid rgba(255,255,255,0.1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.5);
+  }
+
+  .header {
+    padding: 20px 28px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .header-icon {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+  }
+
+  .header-text h1 {
+    font-size: 18px;
+    color: #fff;
+    font-weight: 600;
+  }
+
+  .header-text p {
+    font-size: 13px;
+    color: rgba(255,255,255,0.5);
+    margin-top: 2px;
+  }
+
+  .chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .chat::-webkit-scrollbar { width: 6px; }
+  .chat::-webkit-scrollbar-track { background: transparent; }
+  .chat::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+
+  .msg {
+    max-width: 80%;
+    padding: 14px 18px;
+    border-radius: 18px;
+    line-height: 1.5;
+    font-size: 14px;
+    animation: fadeIn 0.3s ease;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .msg.user {
+    align-self: flex-end;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: #fff;
+    border-bottom-right-radius: 4px;
+  }
+
+  .msg.bot {
+    align-self: flex-start;
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.9);
+    border-bottom-left-radius: 4px;
+  }
+
+  .msg.bot .typing-dots {
+    display: inline-flex;
+    gap: 4px;
+  }
+
+  .msg.bot .typing-dots span {
+    width: 8px; height: 8px;
+    background: rgba(255,255,255,0.5);
+    border-radius: 50%;
+    animation: typing 1.4s infinite ease-in-out;
+  }
+
+  .msg.bot .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .msg.bot .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes typing {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30% { transform: translateY(-6px); opacity: 1; }
+  }
+
+  .input-area {
+    padding: 16px 28px 20px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    gap: 12px;
+  }
+
+  .input-area input {
+    flex: 1;
+    padding: 14px 20px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.06);
+    color: #fff;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .input-area input::placeholder { color: rgba(255,255,255,0.3); }
+  .input-area input:focus { border-color: #2563eb; }
+
+  .input-area button {
+    padding: 14px 24px;
+    border: none;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    white-space: nowrap;
+  }
+
+  .input-area button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(37,99,235,0.4);
+  }
+
+  .input-area button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .welcome {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255,255,255,0.4);
+    text-align: center;
+    padding: 40px;
+  }
+
+  .welcome-icon {
+    font-size: 64px;
+    margin-bottom: 16px;
+    opacity: 0.6;
+  }
+
+  .welcome h2 {
+    font-size: 20px;
+    color: rgba(255,255,255,0.6);
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+
+  .welcome p {
+    font-size: 14px;
+    max-width: 380px;
+    line-height: 1.6;
+  }
+
+  .suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 20px;
+  }
+
+  .suggestions button {
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.5);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .suggestions button:hover {
+    background: rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.8);
+    border-color: rgba(255,255,255,0.2);
+  }
+
+  .footer-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 28px 12px;
+  }
+
+  .footer-bar button {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.25);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 4px 10px;
+    border-radius: 8px;
+    transition: all 0.2s;
+  }
+
+  .footer-bar button:hover {
+    background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.5);
+  }
+
+  .status-dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #22c55e;
+    margin-right: 6px;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .status-text {
+    font-size: 12px;
+    color: rgba(255,255,255,0.25);
+  }
+
+  .hidden { display: none; }
+
+  @media (max-width: 600px) {
+    body { padding: 0; }
+    .container { height: 100vh; max-height: none; border-radius: 0; }
+    .chat { padding: 16px; }
+    .input-area { padding: 12px 16px 16px; }
+    .header { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <div class="header-icon">🏛️</div>
+    <div class="header-text">
+      <h1>Municipalidad de Llanquihue</h1>
+      <p><span class="status-dot"></span>Asistente en línea</p>
+    </div>
+  </div>
+
+  <div class="chat" id="chat">
+    <div class="welcome" id="welcome">
+      <div class="welcome-icon">🏛️</div>
+      <h2>¿En qué puedo ayudarte?</h2>
+      <p>Soy el asistente virtual de la Municipalidad de Llanquihue. Puedo ayudarte con permisos de circulación, patentes comerciales, multas y servicios municipales.</p>
+      <div class="suggestions">
+        <button onclick="sendSuggestion('¿Cómo renuevo mi permiso de circulación?')">Permiso de circulación</button>
+        <button onclick="sendSuggestion('¿Qué necesito para una patente comercial?')">Patente comercial</button>
+        <button onclick="sendSuggestion('¿Cómo puedo pagar una multa?')">Pago de multas</button>
+        <button onclick="sendSuggestion('¿Qué servicios ofrece la municipalidad?')">Servicios municipales</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="input-area">
+    <input type="text" id="input" placeholder="Escribe tu consulta aquí..." autofocus>
+    <button id="sendBtn" onclick="sendMessage()">Enviar</button>
+  </div>
+
+  <div class="footer-bar">
+    <span class="status-text">Consulta ciudadana</span>
+    <button onclick="resetChat()">Limpiar conversación</button>
+  </div>
+</div>
+
+<script>
+  const chat = document.getElementById('chat');
+  const input = document.getElementById('input');
+  const sendBtn = document.getElementById('sendBtn');
+  const welcome = document.getElementById('welcome');
+  let sessionId = localStorage.getItem('session_id') || crypto.randomUUID();
+
+  localStorage.setItem('session_id', sessionId);
+
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') sendMessage();
+  });
+
+  function addMessage(content, role) {
+    welcome?.classList.add('hidden');
+    const div = document.createElement('div');
+    div.className = 'msg ' + role;
+    div.textContent = content;
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+    return div;
+  }
+
+  function showTyping() {
+    welcome?.classList.add('hidden');
+    const div = document.createElement('div');
+    div.className = 'msg bot';
+    div.id = 'typing';
+    div.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function removeTyping() {
+    const t = document.getElementById('typing');
+    if (t) t.remove();
+  }
+
+  function setLoading(loading) {
+    input.disabled = loading;
+    sendBtn.disabled = loading;
+    if (loading) {
+      sendBtn.textContent = 'Enviando...';
+    } else {
+      sendBtn.textContent = 'Enviar';
+    }
+    if (!loading) input.focus();
+  }
+
+  function sendSuggestion(text) {
+    input.value = text;
+    sendMessage();
+  }
+
+  async function sendMessage() {
+    const msg = input.value.trim();
+    if (!msg) return;
+
+    addMessage(msg, 'user');
+    input.value = '';
+    setLoading(true);
+    showTyping();
+
+    try {
+      const res = await fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: msg, session_id: sessionId })
+      });
+
+      const data = await res.json();
+
+      removeTyping();
+
+      if (data.error) {
+        addMessage('Error: ' + data.error, 'bot');
+      } else {
+        addMessage(data.response, 'bot');
+      }
+    } catch (err) {
+      removeTyping();
+      addMessage('Error de conexión. Verifica que el servidor esté funcionando.', 'bot');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function resetChat() {
+    await fetch('/reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId })
+    });
+    chat.querySelectorAll('.msg').forEach(el => el.remove());
+    welcome?.classList.remove('hidden');
+    input.focus();
+  }
+</script>
+
+</body>
+</html>
