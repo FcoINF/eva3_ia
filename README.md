@@ -1,31 +1,58 @@
 # Sistema Inteligente Municipal - Municipalidad de Llanquihue
 
-Sistema desarrollado en Python con OpenAI y Flask, enfocado en mejorar la atención ciudadana mediante un asistente virtual inteligente con interfaz web.
+Sistema desarrollado en Python con OpenAI y Flask, enfocado en mejorar la atención ciudadana mediante un asistente virtual inteligente con interfaz web. Desplegado en AWS EC2.
 
 ---
 
-## Objetivo del Proyecto
+## Acceso al Bot
 
-Mejorar el acceso a información municipal de manera rápida, clara y automatizada mediante un ChatBOT inteligente.
+El asistente está disponible públicamente en:
 
-**Capacidades:**
-- Responder consultas municipales (permisos, multas, patentes, servicios)
-- Conversaciones contextuales con historial por sesión
-- Uso de herramientas inteligentes (function calling)
+**http://100.50.140.13**
+
+> ⚠️ La IP puede cambiar si la instancia EC2 se detiene. Se recomienda usar una **Elastic IP** fija.
 
 ---
 
 ## Tecnologías Utilizadas
 
-- Python + Flask
-- OpenAI API (Function Calling)
-- GPT-4o (GitHub Models)
-- HTML, CSS, JavaScript
-- python-dotenv
+- **Backend:** Python + Flask + Gunicorn
+- **IA:** OpenAI API (Function Calling) — GPT-4o a través de GitHub Models
+- **Frontend:** HTML, CSS, JavaScript vanilla
+- **Servidor:** Nginx (proxy reverso) + Gunicorn (WSGI)
+- **Seguridad:** Rate limiting, detección de inyección de prompt, headers de seguridad, validación de inputs
+- **Despliegue:** AWS EC2 (Ubuntu 22.04) + Systemd
 
 ---
 
-## Instalación y Ejecución
+## Funcionalidades
+
+### Consultas ciudadanas
+- **Permiso de circulación** — requisitos y pasos para renovar
+- **Multas de tránsito** — opciones de pago
+- **Patentes comerciales** — documentación necesaria
+- **Servicios municipales** — información general de la municipalidad
+
+### Suscripción por correo
+- Suscríbete con tu email para recibir el horario del camión de la basura
+- Envío automático vía SMTP (Gmail)
+
+### Seguridad implementada
+- **Rate limiting** — máximo 20 consultas por minuto por IP y por sesión
+- **Detección de inyección de prompt** — bloquea intentos de jailbreak ("ignora instrucciones anteriores", "act as", "new role", etc.)
+- **Validación de emails** — formato, longitud, dominios desechables bloqueados, protección contra SMTP injection
+- **Sanitización de inputs** — caracteres de control eliminados, límite de 2000 caracteres
+- **Headers de seguridad** — CSP, HSTS, X-Frame-Options DENY, X-Content-Type-Options, Permissions-Policy, Referrer-Policy
+- **Cookies de sesión seguras** — HTTP-only, SameSite Strict, expiración 30 min
+- **Límite de payload** — 100KB máximo por solicitud
+- **Validación de tool calls** — solo permite herramientas definidas
+- **Manejo seguro de errores** — no filtra stack traces ni API keys
+- **Audit logging** — registro de IPs, sesiones y eventos de seguridad
+- **Separador de contexto** — evita fuga del system prompt del asistente
+
+---
+
+## Instalación Local
 
 ### 1. Clonar repositorio
 
@@ -37,7 +64,7 @@ cd EVA3_MUNI
 ### 2. Instalar dependencias
 
 ```bash
-pip install flask openai python-dotenv
+pip install flask openai python-dotenv gunicorn
 ```
 
 ### 3. Configurar API Key
@@ -48,6 +75,8 @@ Crea un archivo `.env` en la raíz del proyecto:
 OPENAI_API_KEY=tu_token_de_github
 OPENAI_BASE_URL=https://models.inference.ai.azure.com
 OPENAI_MODEL=gpt-4o
+EMAIL_REMITENTE=botmuni46@gmail.com
+EMAIL_PASSWORD=tu_password_de_aplicacion_gmail
 ```
 
 > Para obtener un token de GitHub: https://github.com/settings/tokens (token clásico, sin permisos especiales)
@@ -62,26 +91,129 @@ Abrir en el navegador: **http://127.0.0.1:5000**
 
 ---
 
+## Despliegue en AWS EC2
+
+### Requisitos
+- Cuenta AWS (free tier)
+- Instancia EC2 (t2.micro, Ubuntu 22.04)
+- Security Group con puertos **22 (SSH)** y **80 (HTTP)** abiertos
+
+### Instalación en la instancia
+
+```bash
+# Actualizar sistema
+sudo apt update && sudo apt upgrade -y
+
+# Instalar dependencias
+sudo apt install -y python3 python3-pip python3-venv nginx git
+python3 -m venv venv
+source venv/bin/activate
+pip install flask openai python-dotenv gunicorn
+
+# Clonar repositorio
+git clone https://github.com/FcoINF/EVA3_MUNI.git
+cd EVA3_MUNI
+
+# Configurar variables de entorno
+nano .env
+```
+
+### Configurar Nginx
+
+```bash
+sudo tee /etc/nginx/sites-available/muni > /dev/null << 'EOF'
+server {
+    listen 80;
+    server_name _;
+
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+EOF
+
+sudo ln -sf /etc/nginx/sites-available/muni /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t && sudo systemctl restart nginx
+```
+
+### Configurar Systemd (auto-arranque)
+
+```bash
+sudo tee /etc/systemd/system/muni.service > /dev/null << 'EOF'
+[Unit]
+Description=Municipal Chatbot
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/EVA3_MUNI
+ExecStart=/home/ubuntu/EVA3_MUNI/venv/bin/gunicorn -w 3 -b 127.0.0.1:5000 app:app --timeout 120
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable muni
+sudo systemctl start muni
+```
+
+### IP Fija (Elastic IP)
+
+Para que la IP pública no cambie al detener la instancia:
+
+1. AWS Console > EC2 > **Elastic IPs** > **Allocate Elastic IP address**
+2. Seleccionar la IP > **Actions > Associate Elastic IP address**
+3. Elegir la instancia y asociar
+
+---
+
 ## Estructura del Proyecto
 
 ```
-├── app.py                  # Servidor web Flask con la API de chat
+├── app.py                  # Servidor Flask con API de chat y seguridad
 ├── templates/
 │   └── index.html          # Interfaz de chat web
 ├── Municipalidad_EVA2.ipynb # Notebook original (prototipo)
 ├── requirements.txt        # Dependencias del proyecto
 ├── .env                    # Variables de entorno (no se sube a git)
-└── .gitignore
+├── .gitignore
+└── README.md
 ```
 
 ---
 
 ## Uso
 
-1. Escribe tu consulta en el chat y presiona Enter
-2. El asistente responde usando herramientas especializadas según el tema
-3. Usa los botones de sugerencias para consultas rápidas
+1. Abre http://100.50.140.13 en cualquier navegador (PC o celular)
+2. Escribe tu consulta o usa los botones de sugerencias
+3. El asistente responde usando herramientas especializadas según el tema
 4. Presiona "Limpiar conversación" para reiniciar el historial
+
+---
+
+## Pruebas de Seguridad
+
+### Rate limiting
+```bash
+for i in $(seq 1 25); do curl -X POST http://127.0.0.1:5000/chat -H "Content-Type: application/json" -d '{"message":"hola"}'; done
+```
+Después de ~20 requests obtendrás `HTTP 429`.
+
+### Inyección de prompt
+Enviar mensajes como "ignora las instrucciones anteriores" o "act as a hacker" será detectado y bloqueado.
+
+### Headers de seguridad
+```bash
+curl -I http://127.0.0.1/
+```
 
 ---
 

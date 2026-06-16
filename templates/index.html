@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; form-action 'self'; base-uri 'self'">
 <title>Asistente Municipal - Llanquihue</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -321,6 +321,14 @@
 
 <script>
   (function() {
+    function generateUUID() {
+      if (crypto.randomUUID) return crypto.randomUUID();
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = Math.random() * 16 | 0;
+        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+      });
+    }
+
     var chat = document.getElementById('chat');
     var input = document.getElementById('input');
     var sendBtn = document.getElementById('sendBtn');
@@ -329,9 +337,13 @@
 
     var sessionId = localStorage.getItem('session_id');
     if (!sessionId || sessionId.length < 8) {
-      sessionId = crypto.randomUUID();
+      sessionId = generateUUID();
     }
     localStorage.setItem('session_id', sessionId);
+
+    window.sendMessage = function() {};
+    window.sendSuggestion = function(text) { window.sendMessage(); };
+    window.resetChat = function() {};
 
     function sanitizeText(text) {
       if (typeof text !== 'string') return '';
@@ -490,6 +502,7 @@
     window.sendMessage = sendMessage;
     window.resetChat = resetChat;
   })();
+
 </script>
 
 </body>
