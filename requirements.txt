@@ -26,6 +26,7 @@ plotly>=5.15.0
 seaborn>=0.12.0
 
 # --- Web y Apps ---
+flask>=3.0.0
 streamlit>=1.30.0
 requests>=2.31.0
 httpx>=0.25.0
