@@ -88,6 +88,7 @@ CATEGORIAS_RESTRINGIDAS = {
 }
 
 INJECTION_PATTERNS = [
+    # Ingles
     r"(?i)ignore\s+(all\s+)?(previous|above|prior|instructions|prompt)",
     r"(?i)forget\s+(all\s+)?(previous|above|prior|instructions|prompt)",
     r"(?i)system\s*(prompt|message|instruction)",
@@ -106,6 +107,20 @@ INJECTION_PATTERNS = [
     r"(?i)developer\s+mode",
     r"(?i)do\s+anything\s+now",
     r"(?i)you\s+have\s+been\s+(replaced|hacked|compromised)",
+    # Espanol
+    r"(?i)ignora\s+(todas\s+)?(las\s+)?(instrucciones|ordenes|indicaciones)(\s+(anteriores|previas))?",
+    r"(?i)olvida\s+(todas\s+)?(las\s+)?(instrucciones|ordenes|indicaciones)(\s+(anteriores|previas))?",
+    r"(?i)muestrame\s+(tu\s+)?(prompt|instrucciones|programacion|codigo)",
+    r"(?i)dime\s+(tu\s+)?(prompt|instrucciones|programacion|codigo|sistema)",
+    r"(?i)revela\s+(tu\s+)?(prompt|instrucciones|programacion|codigo)",
+    r"(?i)ensename\s+(tu\s+)?(prompt|instrucciones|programacion|codigo)",
+    r"(?i)como\s+(fuiste\s+)?(programado|configurado|creado|construido)",
+    r"(?i)que\s+(te\s+)?(programaron|configuraron|dijeron|indicaron)",
+    r"(?i)cuales\s+son\s+(tus\s+)?(instrucciones|ordenes|indicaciones)",
+    r"(?i)quiero\s+que\s+(actues|seas|hagas|digas)",
+    r"(?i)a\s+partir\s+de\s+ahora\s+(actua|comportate|eres|seras)",
+    r"(?i)modo\s+(desarrollador|developer|dios|god)",
+    r"(?i)haz\s+(lo\s+)?que\s+(te\s+)?(pida|pido|diga|digo)",
     r"(?i)sistema:\s*",
 ]
 
