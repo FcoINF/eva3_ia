@@ -679,13 +679,21 @@ def internal_error(e):
     return jsonify({"error": "Error interno del servidor"}), 500
 
 if __name__ == "__main__":
+    debug_mode = os.getenv("FLASK_DEBUG", "0") == "1"
+    port = int(os.getenv("PORT", 5000))
+
     logger.info("=" * 50)
     logger.info("Sistema Inteligente Municipal - Llanquihue")
     logger.info("Directorio de logs: %s", LOG_DIR)
-    logger.info("Modo: %s", "DEBUG" if app.debug else "PRODUCCION")
+    logger.info("Modo: %s", "DEBUG" if debug_mode else "PRODUCCION")
     if ENV_ERRORS:
         logger.warning("ADVERTENCIA: Hay %d errores de configuracion", len(ENV_ERRORS))
         for err in ENV_ERRORS:
             logger.warning("  - %s", err)
     logger.info("=" * 50)
-    app.run(debug=True, host="0.0.0.0", port=5000)
+
+    if debug_mode:
+        app.run(debug=True, host="0.0.0.0", port=port)
+    else:
+        import waitress
+        waitress.serve(app, host="0.0.0.0", port=port)
