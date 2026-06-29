@@ -8,7 +8,7 @@ Sistema desarrollado en Python con OpenAI y Flask, enfocado en mejorar la atenci
 
 El asistente está disponible públicamente en:
 
-**http://100.50.140.13**
+**http://3.231.179.18/**
 
 > ⚠️ La IP puede cambiar si la instancia EC2 se detiene. Se recomienda usar una **Elastic IP** fija.
 
