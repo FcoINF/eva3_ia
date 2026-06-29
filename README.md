@@ -10,18 +10,16 @@ El asistente está disponible públicamente en:
 
 **http://3.231.179.18/**
 
-> ⚠️ La IP puede cambiar si la instancia EC2 se detiene. Se recomienda usar una **Elastic IP** fija.
-
 ---
 
 ## Tecnologías Utilizadas
 
-- **Backend:** Python + Flask + Gunicorn
+- **Backend:** Python + Flask + Waitress
 - **IA:** OpenAI API (Function Calling) — GPT-4o a través de GitHub Models
 - **Frontend:** HTML, CSS, JavaScript vanilla
-- **Servidor:** Nginx (proxy reverso) + Gunicorn (WSGI)
+- **Servidor:** Nginx (proxy reverso) + Waitress (WSGI)
 - **Seguridad:** Rate limiting, detección de inyección de prompt, headers de seguridad, validación de inputs
-- **Despliegue:** AWS EC2 (Ubuntu 22.04) + Systemd
+- **Despliegue:** AWS EC2 (Ubuntu 24.04) + Systemd
 
 ---
 
@@ -68,12 +66,17 @@ cd EVA3_MUNI
 ### 2. Instalar dependencias
 
 ```bash
-pip install flask openai python-dotenv gunicorn
+pip install -r requirements.txt
 ```
 
 ### 3. Configurar API Key
 
-Crea un archivo `.env` en la raíz del proyecto:
+Copia el template y edítalo:
+
+```bash
+cp .env.example .env
+nano .env
+```
 
 ```env
 OPENAI_API_KEY=tu_token_de_github
@@ -88,7 +91,11 @@ EMAIL_PASSWORD=tu_password_de_aplicacion_gmail
 ### 4. Ejecutar
 
 ```bash
-python app.py
+# Modo desarrollo (Flask dev server)
+$env:FLASK_DEBUG="1"; python app.py
+
+# Modo producción (Waitress)
+python wsgi.py
 ```
 
 Abrir en el navegador: **http://127.0.0.1:5000**
@@ -99,8 +106,9 @@ Abrir en el navegador: **http://127.0.0.1:5000**
 
 ### Requisitos
 - Cuenta AWS (free tier)
-- Instancia EC2 (t2.micro, Ubuntu 22.04)
+- Instancia EC2 (t2.micro, Ubuntu 24.04)
 - Security Group con puertos **22 (SSH)** y **80 (HTTP)** abiertos
+- Elastic IP asociada a la instancia
 
 ### Instalación en la instancia
 
@@ -110,22 +118,23 @@ sudo apt update && sudo apt upgrade -y
 
 # Instalar dependencias
 sudo apt install -y python3 python3-pip python3-venv nginx git
-python3 -m venv venv
-source venv/bin/activate
-pip install flask openai python-dotenv gunicorn
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 
 # Clonar repositorio
 git clone https://github.com/FcoINF/EVA3_MUNI.git
 cd EVA3_MUNI
 
 # Configurar variables de entorno
+cp .env.example .env
 nano .env
 ```
 
 ### Configurar Nginx
 
 ```bash
-sudo tee /etc/nginx/sites-available/muni > /dev/null << 'EOF'
+sudo tee /etc/nginx/sites-available/chatbot > /dev/null << 'EOF'
 server {
     listen 80;
     server_name _;
@@ -140,7 +149,7 @@ server {
 }
 EOF
 
-sudo ln -sf /etc/nginx/sites-available/muni /etc/nginx/sites-enabled/
+sudo ln -sf /etc/nginx/sites-available/chatbot /etc/nginx/sites-enabled/
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t && sudo systemctl restart nginx
 ```
@@ -148,15 +157,16 @@ sudo nginx -t && sudo systemctl restart nginx
 ### Configurar Systemd (auto-arranque)
 
 ```bash
-sudo tee /etc/systemd/system/muni.service > /dev/null << 'EOF'
+sudo tee /etc/systemd/system/chatbot.service > /dev/null << 'EOF'
 [Unit]
-Description=Municipal Chatbot
+Description=Chatbot Municipal Llanquihue
 After=network.target
 
 [Service]
 User=ubuntu
 WorkingDirectory=/home/ubuntu/EVA3_MUNI
-ExecStart=/home/ubuntu/EVA3_MUNI/venv/bin/gunicorn -w 3 -b 127.0.0.1:5000 app:app --timeout 120
+Environment="PATH=/home/ubuntu/EVA3_MUNI/.venv/bin"
+ExecStart=/home/ubuntu/EVA3_MUNI/.venv/bin/python /home/ubuntu/EVA3_MUNI/wsgi.py
 Restart=always
 RestartSec=5
 
@@ -165,13 +175,11 @@ WantedBy=multi-user.target
 EOF
 
 sudo systemctl daemon-reload
-sudo systemctl enable muni
-sudo systemctl start muni
+sudo systemctl enable chatbot
+sudo systemctl start chatbot
 ```
 
 ### IP Fija (Elastic IP)
-
-Para que la IP pública no cambie al detener la instancia:
 
 1. AWS Console > EC2 > **Elastic IPs** > **Allocate Elastic IP address**
 2. Seleccionar la IP > **Actions > Associate Elastic IP address**
@@ -183,11 +191,13 @@ Para que la IP pública no cambie al detener la instancia:
 
 ```
 ├── app.py                  # Servidor Flask con API de chat y seguridad
+├── wsgi.py                 # Entry point para Waitress (producción)
 ├── templates/
 │   └── index.html          # Interfaz de chat web
 ├── Municipalidad_EVA2.ipynb # Notebook original (prototipo)
 ├── requirements.txt        # Dependencias del proyecto
 ├── .env                    # Variables de entorno (no se sube a git)
+├── .env.example            # Template de variables de entorno
 ├── .gitignore
 └── README.md
 ```
@@ -196,7 +206,7 @@ Para que la IP pública no cambie al detener la instancia:
 
 ## Uso
 
-1. Abre http://100.50.140.13 en cualquier navegador (PC o celular)
+1. Abre http://3.231.179.18 en cualquier navegador (PC o celular)
 2. Escribe tu consulta o usa los botones de sugerencias
 3. El asistente responde usando herramientas especializadas según el tema
 4. Presiona "Limpiar conversación" para reiniciar el historial
